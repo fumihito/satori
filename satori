@@ -130,11 +130,11 @@ typical operations are:
 
  1) register your test commands.
 
- ${EXEC_PATH} add cat /etc/resolv.conf
+ ${EXECPATH} add cat /etc/resolv.conf
 
  2) exec test.
 
- ${EXEC_PATH} exec
+ ${EXECPATH} exec
 
 CAT_USAGE_TEXT
 }
