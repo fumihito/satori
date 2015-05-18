@@ -1,0 +1,219 @@
+#!/bin/bash
+
+EXECPATH="$_"
+alias eecho='>&2 echo'
+
+BATSFILE=satori.bats
+
+MODE=$1
+if [ -z "${MODE}" ] ; then
+    MODE=usage
+fi
+
+set -eu
+
+satori_bats(){
+    local BATS="$(which bats ||:)"
+    if [ -z "${BATS-}" ];then
+        # system bats not found, so using submoduled bats for alternatives.
+        local ABSEXECPATH=$(readlink "${EXECPATH}"|| echo "${EXECPATH}")
+        local ABSDIR=$(cd $(dirname "${ABSEXECPATH}"); pwd)
+        local BATS="${ABSDIR}/bats/bin/bats"
+    fi
+    if [ "$1" == "DEBUG" ];then
+        # "DEBUG": "Config show" mode.
+        echo "conf: ${BATSFILE}"
+        echo "bats: ${BATS}"
+        test -e "${BATS}" || echo "CRITICAL: Your bats could not execute anyway, check file path and owner/permissions".
+        readlink "${BATS}" | grep -q '../libexec/bats' || echo "CRITICAL: Your bats installation seems broken, check with 'satori help'"
+    elif [ "$1" == "RUN" ];then
+        # "RUN": execute bats.
+        # if bats is dead, we cannot continue operations.
+        test -e "${BATS}" || exit 
+        _bats_pretest ${BATSFILE} || exit
+        ${BATS} ${BATSFILE}
+    fi
+}
+
+_bats_pretest(){
+BATSFILE=$1
+# bats pre-exec check for secure operation.
+
+# check "satori.bats" parent directory 
+local ABSDIR=$(cd $(dirname "${BATSFILE}"); pwd)
+_strict_check ${ABSDIR} || return 1
+
+# check "satori.bats" file
+_strict_check ${BATSFILE} || return 1
+
+return 0
+}
+
+
+_strict_check(){
+FILE=$1
+# Q. not symlink?
+
+test -L ${FILE} 
+if [ $? != 0 ] ;then
+    echo "error ${FILE}"
+fi
+
+#" Q. you are owner?
+
+# Q. directory are not writable group/other users?
+
+}
+
+satori_exec(){
+    local ARG="$@"
+    local COMMAND_HASH=$(echo "${ARG}" | sha1sum | cut -d ' ' -f1)
+
+    # before register, we must check dupplicated entries.
+
+    # NOTE: touch $BATSFILE, it create/update BATSFILE.
+    # (This is dirty hack for easy error handling/debuging)
+    touch ${BATSFILE}
+    grep -q "HASH:${COMMAND_HASH}" ${BATSFILE} &&:
+    local REGISTERED=$?
+
+    if [ ${REGISTERED} = 0 ];then
+        echo "This command seems registered, skipped."
+        exit 1
+    fi
+
+    # test exec
+    local RETOUT=$(/bin/bash -c "${ARG}")
+    /bin/bash -c "${ARG}" >/dev/null &&:
+    local RETVAL=$?
+
+# output bats file
+    cat <<EOLEOLEOL >> ${BATSFILE}
+# <${COMMAND_HASH}>
+@test '${ARG} # return ${RETVAL}' { # {{{
+    # skip "HASH:${COMMAND_HASH}"
+    EXEC="${ARG}"
+    run /bin/bash -c "\${EXEC}"
+    [ \$status -eq "${RETVAL}" ]
+EOLEOLEOL
+
+    local LINENUM=0
+    local _IFS=${IFS}
+    IFS=$'\n'
+    for i in ${RETOUT};do 
+        echo "    [[ \${lines[${LINENUM}]} =~ \"${i}\" ]]" >> ${BATSFILE}
+        local LINENUM=$(( LINENUM + 1 ))
+    done
+    IFS=$_IFS
+    
+    cat <<EOLEOLEOL2 >> ${BATSFILE}
+}
+# }}}
+# </${COMMAND_HASH}>
+EOLEOLEOL2
+}
+
+usage(){
+    echo
+    cat <<CAT_USAGE_TEXT
+usage: 
+ - satori add (commands) : register (commands) to current satori.bats file.
+ - satori exec           : execute bats test.
+
+ - satori cat            : show satori.bats file.
+ - satori listconf       : list up configuration files.
+ - satori debug          : debug satori behavior (TBD).
+ - satori edit           : edit current satori.bats file
+ - satori (commands)     : same as "add (commands)"
+
+typical operations are:
+
+ 1) register your test commands.
+
+ ${EXEC_PATH} add cat /etc/resolv.conf
+
+ 2) exec test.
+
+ ${EXEC_PATH} exec
+
+CAT_USAGE_TEXT
+}
+
+help(){
+echo
+cat <<CAT_HELP_TEXT
+
+
+exec error
+=============
+
+If you met below messages at "satori exec" phase, that mean your
+bats are not working correctly. 
+
+  ----------------------------------
+  bats: line NNN: exec: bats-exec-test: not found
+  bats: line NNN: bats-format-tap-stream: command not found
+  ----------------------------------
+
+or 
+
+  ----------------------------------
+  CRITICAL: Your bats installation seems broken, check with 'satori help'
+  ----------------------------------
+
+Check your bats installation with '(cd bats; readlink bin/bats)'. 
+
+expected results:
+
+  $ readlink bin/bats
+  ../libexec/bats
+
+These results mean your deploy operation breaks bats.
+(typically, scp -r (without -p) or Dropbox copying).
+
+  $ readlink bin/bats
+  (** not output **)
+  $ echo $?
+  1
+
+To recovery, exec '(cd bats; rm bin/bats; ln -s ../libexec/bats bin/bats)'.
+
+CAT_HELP_TEXT
+}
+
+case ${MODE} in
+    "add")
+        shift
+        satori_exec "${@}"
+    ;;
+    "cat")
+        cat ${BATSFILE}
+    ;;
+    "edit")
+        if   [ -v VISUAL ]; then
+            ${VISUAL} ${BATSFILE} 
+        elif [ -v EDITOR ]; then
+            ${EDITOR} ${BATSFILE} 
+        elif [ -e editor ]; then
+            editor ${BATSFILE} 
+        fi
+    ;;
+    "exec")
+        satori_bats RUN
+    ;;
+    "help")
+        help 
+    ;;
+    "listconf")
+        satori_bats DEBUG
+    ;;
+    "debug")
+        satori_bats DEBUG
+    ;;
+    "usage")
+        usage
+    ;;
+    *)
+        satori_exec "$@"
+esac
+
