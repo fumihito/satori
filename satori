@@ -13,6 +13,13 @@ fi
 set -eu
 
 satori_bats(){
+    set +u
+    BATSFILE=$2
+    if [ -z "${BATSFILE}" ] ; then
+        BATSFILE=satori.bats
+    fi
+    set -u
+
     local BATS="$(which bats ||:)"
     if [ -z "${BATS-}" ];then
         # system bats not found, so using submoduled bats for alternatives.
@@ -199,7 +206,8 @@ case ${MODE} in
         fi
     ;;
     "exec")
-        satori_bats RUN
+        shift
+        satori_bats RUN "${@}"
     ;;
     "help")
         help 
