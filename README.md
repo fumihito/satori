@@ -6,13 +6,13 @@ Please, do not use your production environment.
 
 ### How To install
 
-git clone https://github.com/fumihito/satori.git
-cd satori
+git clone https://github.com/fumihito/satori.git;  
+cd satori;  
 
-(optional, If you already installed bats, you can skip)
-git submodule init 
-git submodule update 
-(optional/)
+(optional, If you already installed bats, you can skip)  
+git submodule init  
+git submodule update  
+(optional/)  
 
 ### How To use
 
