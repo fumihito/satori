@@ -3,7 +3,7 @@
 EXECPATH="$_"
 alias eecho='>&2 echo'
 
-BATSFILE=satori.bats
+BATSFILE=${BATSFILE:-satori.bats}
 
 MODE=$1
 if [ -z "${MODE}" ] ; then
@@ -13,14 +13,7 @@ fi
 set -eu
 
 satori_bats(){
-    set +u
-    BATSFILE=$2
-    if [ -z "${BATSFILE}" ] ; then
-        BATSFILE=satori.bats
-    fi
-    set -u
-
-    local BATS="$(which bats ||:)"
+    local BATS="$(which bats >/dev/null 2>&1 ||:)"
     if [ -z "${BATS-}" ];then
         # system bats not found, so using submoduled bats for alternatives.
         local ABSEXECPATH=$(readlink "${EXECPATH}"|| echo "${EXECPATH}")
@@ -62,7 +55,7 @@ FILE=$1
 # Q. not symlink?
 
 test -L ${FILE} 
-if [ $? != 0 ] ;then
+if [ $? = 0 ] ;then
     echo "error ${FILE}"
 fi
 
@@ -206,8 +199,7 @@ case ${MODE} in
         fi
     ;;
     "exec")
-        shift
-        satori_bats RUN "${@}"
+        satori_bats RUN
     ;;
     "help")
         help 
