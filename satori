@@ -1,7 +1,7 @@
 #!/bin/bash
 
 EXECPATH="$_"
-alias eecho='>&2 echo'
+alias errout='>&2 echo'
 
 BATSFILE=${BATSFILE:-satori.bats}
 
@@ -88,6 +88,8 @@ satori_exec(){
     local RETVAL=$?
 
 # output bats file
+
+# output part 1
     cat <<EOLEOLEOL >> ${BATSFILE}
 # <${COMMAND_HASH}>
 @test '${ARG} # return ${RETVAL}' { # {{{
@@ -97,6 +99,7 @@ satori_exec(){
     [ \$status -eq "${RETVAL}" ]
 EOLEOLEOL
 
+# output part 2
     local LINENUM=0
     local _IFS=${IFS}
     IFS=$'\n'
