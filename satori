@@ -66,6 +66,8 @@ fi
 }
 
 satori_exec(){
+    ADDMODE=$1
+    shift
     local ARG="$@"
     local COMMAND_HASH=$(echo "${ARG}" | sha1sum | cut -d ' ' -f1)
 
@@ -83,7 +85,10 @@ satori_exec(){
     fi
 
     # test exec
-    local RETOUT=$(/bin/bash -c "${ARG}")
+    RETOUT=""
+    if [ ${ADDMODE} == "addfull" ]; then
+        local RETOUT=$(/bin/bash -c "${ARG}")
+    fi
     /bin/bash -c "${ARG}" >/dev/null &&:
     local RETVAL=$?
 
@@ -185,8 +190,7 @@ CAT_HELP_TEXT
 }
 
 case ${MODE} in
-    "add")
-        shift
+    "add"|"addfull")
         satori_exec "${@}"
     ;;
     "cat")
@@ -217,6 +221,6 @@ case ${MODE} in
         usage
     ;;
     *)
-        satori_exec "$@"
+        satori_exec "add $@"
 esac
 
