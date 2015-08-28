@@ -65,6 +65,27 @@ fi
 
 }
 
+satori_msg(){
+    shift
+    local ARG="$@"
+    local COMMAND_HASH=$(echo "${ARG}" | sha1sum | cut -d ' ' -f1)
+
+# output bats file
+
+# output part 1
+    cat <<EOLEOLEOL >> ${BATSFILE}
+# <${COMMAND_HASH}>
+@test '${ARG}' { # {{{
+    # skip "HASH:${COMMAND_HASH}"
+    skip "Read message!"
+    run true
+    [ \$status -eq "0" ]
+} # }}}
+# </${COMMAND_HASH}>
+EOLEOLEOL
+
+}
+
 satori_exec(){
     ADDMODE=$1
     shift
@@ -193,6 +214,9 @@ case ${MODE} in
     "add"|"addfull")
         satori_exec "${@}"
     ;;
+    "msg")
+        satori_msg "${@}"
+    ;;
     "cat")
         cat ${BATSFILE}
     ;;
@@ -221,6 +245,6 @@ case ${MODE} in
         usage
     ;;
     *)
-        satori_exec "add $@"
+        usage
 esac
 
